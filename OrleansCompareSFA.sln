@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grains", "Grains\Grains.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRunnerApi", "TestRunnerApi\TestRunnerApi.csproj", "{A83C901C-F8D7-46EC-B0F4-9F9C9EFC0206}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Actors", "Actors\Actors.csproj", "{03F0861F-1BC5-44AF-90FB-424FEF6BF390}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Actors.Interfaces", "Actors.Interfaces\Actors.Interfaces.csproj", "{261745EE-1602-4456-B86D-3BFB870BCA7D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +61,18 @@ Global
 		{A83C901C-F8D7-46EC-B0F4-9F9C9EFC0206}.Release|Any CPU.ActiveCfg = Release|x64
 		{A83C901C-F8D7-46EC-B0F4-9F9C9EFC0206}.Release|x64.ActiveCfg = Release|x64
 		{A83C901C-F8D7-46EC-B0F4-9F9C9EFC0206}.Release|x64.Build.0 = Release|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Debug|x64.ActiveCfg = Debug|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Debug|x64.Build.0 = Debug|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Release|Any CPU.ActiveCfg = Release|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Release|x64.ActiveCfg = Release|x64
+		{03F0861F-1BC5-44AF-90FB-424FEF6BF390}.Release|x64.Build.0 = Release|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Debug|x64.ActiveCfg = Debug|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Debug|x64.Build.0 = Debug|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Release|Any CPU.ActiveCfg = Release|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Release|x64.ActiveCfg = Release|x64
+		{261745EE-1602-4456-B86D-3BFB870BCA7D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

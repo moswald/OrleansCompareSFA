@@ -29,6 +29,7 @@
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Actors\Actors.csproj" />
     <ProjectReference Include="..\OrleansSiloHost\OrleansSiloHost.csproj" />
     <ProjectReference Include="..\TestRunnerApi\TestRunnerApi.csproj" />
   </ItemGroup>

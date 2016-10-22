@@ -6,10 +6,13 @@
     using System.Linq;
     using System.Threading.Tasks;
     using System.Web.Http;
+    using Actors.Interfaces;
     using GrainInterfaces;
+    using Microsoft.ServiceFabric.Actors;
+    using Microsoft.ServiceFabric.Actors.Client;
     using Orleans;
 
-    [Route("api/tests")]
+    [RoutePrefix("api/tests")]
     public class TestsController : ApiController
     {
         const int GrainCount = 10000;
@@ -34,6 +37,32 @@
                 var bestFriend = i + 1 == GrainCount ? 0 : i + 1;
 
                 initializationCalls[i] = grain.Initialize(grainIds[bestFriend], grainNames[i * 2], grainNames[i * 2 + 1], 0);
+            }
+
+            await Task.WhenAll(initializationCalls);
+
+            sw.Stop();
+
+            return Ok(sw.Elapsed);
+        }
+
+        [HttpGet]
+        [Route("initializeActors/")]
+        public async Task<IHttpActionResult> InitializeActors()
+        {
+            var actorIds = Enumerable.Range(0, GrainCount).Select(_ => ActorId.CreateRandom()).ToArray();
+            var actorNames = Enumerable.Range(0, GrainCount * 2).Select(_ => RandomString(NameLength)).ToArray();
+
+            var initializationCalls = new Task[GrainCount];
+
+            var sw = Stopwatch.StartNew();
+
+            for (var i = 0; i != GrainCount; ++i)
+            {
+                var grain = ActorProxy.Create<IFriendlyActor>(actorIds[i]);
+                var bestFriend = i + 1 == GrainCount ? 0 : i + 1;
+
+                initializationCalls[i] = grain.Initialize(actorIds[bestFriend], actorNames[i * 2], actorNames[i * 2 + 1], 0);
             }
 
             await Task.WhenAll(initializationCalls);
