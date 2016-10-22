@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ApplicationManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ApplicationTypeName="OrleansCompareSFAType" ApplicationTypeVersion="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <Parameters>
+    <Parameter Name="Shared_OrleansSiloStorageConnectionString" DefaultValue="" />
+    <Parameter Name="OrleansSiloHost_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="OrleansSiloHost_AzureTableStorageConnectionString" DefaultValue="" />
+    <Parameter Name="OrleansSiloHost_GrainsUseJsonFormat" DefaultValue="" />
+    <Parameter Name="OrleansSiloHost_RemindersStorageConnectionString" DefaultValue="" />
+    <Parameter Name="OrleansSiloHost_PlacementConstraints" DefaultValue="" />
+    <Parameter Name="TestRunnerApi_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="TestRunnerApi_PlacementConstraints" DefaultValue="" />
+  </Parameters>
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="TestRunnerApiPkg" ServiceManifestVersion="1.0.0" />
+    <ConfigOverrides>
+      <ConfigOverride Name="Config">
+        <Settings>
+          <Section Name="Storage">
+            <Parameter Name="SiloStorageConnectionString" Value="[Shared_OrleansSiloStorageConnectionString]" />
+          </Section>
+        </Settings>
+      </ConfigOverride>
+    </ConfigOverrides>
+  </ServiceManifestImport>
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="OrleansSiloHostPkg" ServiceManifestVersion="1.0.0" />
+    <ConfigOverrides>
+      <ConfigOverride Name="Config">
+        <Settings>
+          <Section Name="Storage">
+            <Parameter Name="SiloStorageConnectionString" Value="[Shared_OrleansSiloStorageConnectionString]" />
+            <Parameter Name="GrainStorageConnectionString" Value="[OrleansSiloHost_AzureTableStorageConnectionString]" />
+            <Parameter Name="GrainsUseJsonFormat" Value="[OrleansSiloHost_GrainsUseJsonFormat]" />
+            <Parameter Name="RemindersStorageConnectionString" Value="[OrleansSiloHost_AzureTableStorageConnectionString]" />
+          </Section>
+        </Settings>
+      </ConfigOverride>
+    </ConfigOverrides>
+  </ServiceManifestImport>
+  <DefaultServices>
+    <Service Name="TestRunnerApi">
+      <StatelessService ServiceTypeName="TestRunnerApiType" InstanceCount="[TestRunnerApi_InstanceCount]">
+        <SingletonPartition />
+        <PlacementConstraints>[TestRunnerApi_PlacementConstraints]</PlacementConstraints>
+      </StatelessService>
+    </Service>
+    <Service Name="OrleansSiloHost">
+      <StatelessService ServiceTypeName="OrleansSiloHostType" InstanceCount="[OrleansSiloHost_InstanceCount]">
+        <SingletonPartition />
+        <PlacementConstraints>[OrleansSiloHost_PlacementConstraints]</PlacementConstraints>
+      </StatelessService>
+    </Service>
+  </DefaultServices>
+</ApplicationManifest>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Settings xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+    <Section Name="Storage">
+        <Parameter Name="SiloStorageConnectionString"
+                   Value=""
+                   MustOverride="true"/>
+        <Parameter Name="GrainStorageConnectionString"
+                   Value=""
+                   MustOverride="true"/>
+        <Parameter Name="GrainsUseJsonFormat"
+                   Value="false"
+                   MustOverride="true"/>
+        <Parameter Name="GrainsUseIndentedJsonFormat"
+                   Value="true" />
+        <Parameter Name="RemindersStorageConnectionString"
+                   Value="true" />
+    </Section>
+</Settings>
