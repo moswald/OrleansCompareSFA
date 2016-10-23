@@ -30,5 +30,13 @@
 
             return Task.CompletedTask;
         }
+
+        public async Task<string> GetFullName(string separator)
+        {
+            var firstName = await StateManager.GetStateAsync<string>(FirstNameState);
+            var lastName = StateManager.GetStateAsync<string>(LastNameState);
+
+            return firstName + separator + lastName;
+        }
     }
 }

@@ -7,5 +7,7 @@
     public interface IFriendlyActor : IActor
     {
         Task Initialize(ActorId bestFriend, string firstName, string lastName, IEnumerable<IPetActor> pets, int extraDataSize);
+
+        Task<string> GetFullName(string separator);
     }
 }

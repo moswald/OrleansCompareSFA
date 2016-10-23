@@ -32,5 +32,7 @@ namespace Grains
 
             return WriteStateAsync();
         }
+
+        public Task<string> GetFullName(string separator) => Task.FromResult(State.FirstName + separator + State.LastName);
     }
 }

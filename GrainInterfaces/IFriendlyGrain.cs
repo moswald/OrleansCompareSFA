@@ -8,5 +8,7 @@ namespace GrainInterfaces
     public interface IFriendlyGrain : IGrainWithGuidKey
     {
         Task Initialize(Guid bestFriend, string firstName, string lastName, IEnumerable<IPetGrain> petNames, int extraDataSize);
+
+        Task<string> GetFullName(string separator);
     }
 }
