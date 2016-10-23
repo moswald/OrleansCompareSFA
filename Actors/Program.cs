@@ -10,7 +10,7 @@
         {
             try
             {
-                ActorRuntime.RegisterActorAsync<Actors>(
+                ActorRuntime.RegisterActorAsync<FriendlyActor>(
                    (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);

@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ServiceManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="ActorsPkg" Version="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <ServiceTypes>
-    <StatefulServiceType ServiceTypeName="ActorsActorServiceType" HasPersistedState="true">
+    <StatefulServiceType ServiceTypeName="FriendlyActorServiceType" HasPersistedState="true">
       <Extensions>
-        <Extension Name="__GeneratedServiceType__" GeneratedId="b43ce790-5941-4cfc-b6e2-b35025196bc4|Persisted">
+        <Extension Name="__GeneratedServiceType__" GeneratedId="e92ce48a-235f-4c4a-b1da-0d3aa8362d93|Persisted">
           <GeneratedNames xmlns="http://schemas.microsoft.com/2015/03/fabact-no-schema">
             <DefaultService Name="FriendlyActorService" />
-            <ServiceEndpoint Name="ActorsActorServiceEndpoint" />
-            <ReplicatorEndpoint Name="ActorsActorServiceReplicatorEndpoint" />
-            <ReplicatorConfigSection Name="ActorsActorServiceReplicatorConfig" />
-            <ReplicatorSecurityConfigSection Name="ActorsActorServiceReplicatorSecurityConfig" />
-            <StoreConfigSection Name="ActorsActorServiceLocalStoreConfig" />
+            <ServiceEndpoint Name="FriendlyActorServiceEndpoint" />
+            <ReplicatorEndpoint Name="FriendlyActorServiceReplicatorEndpoint" />
+            <ReplicatorConfigSection Name="FriendlyActorServiceReplicatorConfig" />
+            <ReplicatorSecurityConfigSection Name="FriendlyActorServiceReplicatorSecurityConfig" />
+            <StoreConfigSection Name="FriendlyActorServiceLocalStoreConfig" />
           </GeneratedNames>
         </Extension>
       </Extensions>
@@ -26,8 +26,8 @@
   <ConfigPackage Name="Config" Version="1.0.0" />
   <Resources>
     <Endpoints>
-      <Endpoint Name="ActorsActorServiceEndpoint" />
-      <Endpoint Name="ActorsActorServiceReplicatorEndpoint" />
+      <Endpoint Name="FriendlyActorServiceEndpoint" />
+      <Endpoint Name="FriendlyActorServiceReplicatorEndpoint" />
     </Endpoints>
   </Resources>
   <!-- The content will be generated during build -->

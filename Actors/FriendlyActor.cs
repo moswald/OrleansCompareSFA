@@ -6,14 +6,14 @@
     using Microsoft.ServiceFabric.Actors.Runtime;
 
     [StatePersistence(StatePersistence.Persisted)]
-    class Actors : Actor, IFriendlyActor
+    class FriendlyActor : Actor, IFriendlyActor
     {
         const string BestFriendState = nameof(BestFriendState);
         const string FirstNameState = nameof(FirstNameState);
         const string LastNameState = nameof(LastNameState);
         const string ExtraDataState = nameof(ExtraDataState);
 
-        public Actors(ActorService actorService, ActorId actorId)
+        public FriendlyActor(ActorService actorService, ActorId actorId)
             : base(actorService, actorId)
         {
         }
