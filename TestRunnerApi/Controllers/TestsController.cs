@@ -101,12 +101,41 @@
             return Ok(result);
         }
 
+        [HttpGet]
+        [Route("query/names/orleans")]
+        public async Task<IHttpActionResult> QueryOrleansNames(int iterations, string separator = " ")
+        {
+            var results = await QueryNames(
+                iterations,
+                separator,
+                guid =>
+                {
+                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
+                    return grain.GetFullName(separator);
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 } );
+        }
+
+        [HttpGet]
+        [Route("query/names/actors")]
+        public async Task<IHttpActionResult> QueryActorsNames(int iterations, string separator = " ")
+        {
+            var results = await QueryNames(
+                iterations,
+                separator,
+                guid =>
+                {
+                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
+                    return actor.GetFullName(separator);
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 } );
+        }
+
         async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
         {
-            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
-            var jsonValue = await blob.DownloadTextAsync().ConfigureAwait(false);
-
-            var testState = JsonConvert.DeserializeObject<TestState>(jsonValue);
+            var testState = await LoadTestState();
 
             var initializationCalls = new Task[testState.Count];
 
@@ -116,7 +145,7 @@
             {
                 var bestFriend = i + 1 == testState.Count ? 0 : i + 1;
 
-                initializationCalls[i] = create(testState.Ids[i], testState.Ids[bestFriend], testState.Names[i * 2], testState.Names[i * 2 + 1], testState.PetIds[i], testState.ExtraDataSize);
+                initializationCalls[i] = create(testState.Ids[i], testState.Ids[bestFriend], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraDataSize);
             }
 
             await Task.WhenAll(initializationCalls);
@@ -124,6 +153,38 @@
             sw.Stop();
 
             return sw.Elapsed;
+        }
+
+        async Task<Tuple<bool, TimeSpan>> QueryNames(int iterations, string separator, Func<Guid, Task<string>> queryName)
+        {
+            var testState = await LoadTestState();
+
+            var queryCalls = new Task<bool>[iterations * testState.Count];
+
+            var sw = Stopwatch.StartNew();
+
+            for (var iteration = 0; iteration != iterations; ++iteration)
+            {
+                for (var grainIndex = 0; grainIndex != testState.Count; ++grainIndex)
+                {
+                    queryCalls[iteration * testState.Count + grainIndex] = CompareNames(queryName(testState.Ids[grainIndex]), testState.FirstName(grainIndex) + separator + testState.LastName(grainIndex));
+                }
+            }
+
+            var results = await Task.WhenAll(queryCalls);
+            sw.Stop();
+
+            return Tuple.Create(results.All(x => x), sw.Elapsed);
+        }
+
+        static async Task<bool> CompareNames(Task<string> remoteName, string expected) => await remoteName == expected;
+
+        async Task<TestState> LoadTestState()
+        {
+            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
+            var jsonValue = await blob.DownloadTextAsync().ConfigureAwait(false);
+
+            return JsonConvert.DeserializeObject<TestState>(jsonValue);
         }
 
         static string RandomString(int length) => new string(Enumerable.Range(0, length).Select(c => (char)Rng.Next('A', 'Z' + 1)).ToArray());
@@ -135,6 +196,9 @@
             public ImmutableArray<string> Names { get; set; }
             public ImmutableArray<ImmutableArray<Guid>> PetIds { get; set; }
             public int ExtraDataSize { get; set; }
+
+            public string FirstName(int index) => Names[index * 2];
+            public string LastName(int index) => Names[index * 2 + 1];
         }
     }
 }
