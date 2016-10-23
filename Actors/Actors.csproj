@@ -82,6 +82,7 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PetActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="FriendlyActor.cs" />
     <Compile Include="Program.cs" />

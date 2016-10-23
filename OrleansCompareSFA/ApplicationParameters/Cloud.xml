@@ -1,16 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/OrleansCompareSFA" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
-    <Parameter Name="Shared_OrleansSiloStorageConnectionString" Value="" />
+    <Parameter Name="Shared_OrleansSiloStorageConnectionString" Value="UseDevelopmentStorage=true" />
     <Parameter Name="OrleansSiloHost_InstanceCount" Value="-1" />
-    <Parameter Name="OrleansSiloHost_AzureTableStorageConnectionString" Value="UseDevelopmentStorage=true" />
+    <Parameter Name="OrleansSiloHost_AzureTableStorageConnectionString" Value="" />
     <Parameter Name="OrleansSiloHost_GrainsUseJsonFormat" Value="true" />
-    <Parameter Name="OrleansSiloHost_RemindersStorageConnectionString" Value="UseDevelopmentStorage=true" />
+    <Parameter Name="OrleansSiloHost_RemindersStorageConnectionString" Value="" />
     <Parameter Name="OrleansSiloHost_PlacementConstraints" Value="" />
     <Parameter Name="TestRunnerApi_InstanceCount" Value="1" />
     <Parameter Name="TestRunnerApi_AzureStorageConnectionString" Value="UseDevelopmentStorage=true" />
-    <Parameter Name="TestRunnerApi_BlobStorageContainer" Value="Orleans-SFA" />
+    <Parameter Name="TestRunnerApi_BlobStorageContainer" Value="orleans-sfa" />
     <Parameter Name="TestRunnerApi_TestSetupBlobName" Value="testsetup.json" />
     <Parameter Name="TestRunnerApi_PlacementConstraints" Value="" />
+    <Parameter Name="FriendlyActorService_PartitionCount" Value="1" />
+    <Parameter Name="PetActorService_PartitionCount" Value="1" />
   </Parameters>
 </Application>

@@ -75,8 +75,9 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IPetActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="IActors.cs" />
+    <Compile Include="IFriendlyActor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -20,6 +20,7 @@
     public class TestsController : ApiController
     {
         const int NameLength = 32;
+        const int MaxPets = 2;
 
         static readonly Random Rng = new Random();
 
@@ -48,6 +49,10 @@
 
             var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
             var names = Enumerable.Range(0, count * 2).Select(_ => RandomString(NameLength)).ToArray();
+            var pets = Enumerable.Range(0, count)
+                .Select(_ => Rng.Next(0, MaxPets + 1))
+                .Select(petCount => Enumerable.Range(0, petCount).Select(_ => Guid.NewGuid()).ToArray())
+                .ToArray();
 
             var jsonValue = JObject
                 .FromObject(
@@ -56,6 +61,7 @@
                         count,
                         ids,
                         names,
+                        pets,
                         extraDataSize
                     })
                 .ToString(Formatting.Indented);
@@ -71,10 +77,13 @@
         public async Task<IHttpActionResult> InitializeOrleans()
         {
             var result = await Initialize(
-                (grainId, bestFriendId, firstName, lastName, extraDataSize) =>
+                async (grainId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
                 {
                     var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(grainId);
-                    return grain.Initialize(bestFriendId, firstName, lastName, extraDataSize);
+                    var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToArray();
+
+                    await Task.WhenAll(pets.Select(pet => pet.Initialize(grain, pet.GetPrimaryKey().ToString()))).ConfigureAwait(false);
+                    await grain.Initialize(bestFriendId, firstName, lastName, pets, extraDataSize).ConfigureAwait(false);
                 });
 
             return Ok(result);
@@ -85,16 +94,19 @@
         public async Task<IHttpActionResult> InitializeActors()
         {
             var result = await Initialize(
-                (actorId, bestFriendId, firstName, lastName, extraDataSize) =>
+                async (actorId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
                 {
                     var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(actorId));
-                    return actor.Initialize(new ActorId(bestFriendId), firstName, lastName, extraDataSize);
+                    var pets = petIds.Select(petId => ActorProxy.Create<IPetActor>(new ActorId(petId))).ToArray();
+
+                    await Task.WhenAll(pets.Select(pet => pet.Initialize(actor, pet.GetActorId().ToString()))).ConfigureAwait(false);
+                    await actor.Initialize(new ActorId(bestFriendId), firstName, lastName, pets, extraDataSize);
                 });
 
             return Ok(result);
         }
 
-        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, int, Task> create)
+        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, Guid[], int, Task> create)
         {
             var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
             var jsonValue = await blob.DownloadTextAsync().ConfigureAwait(false);
@@ -104,6 +116,13 @@
             var count = json["count"].Value<int>();
             var ids = json["ids"].Values<string>().Select(Guid.Parse).ToArray();
             var names = json["names"].Values<string>().ToArray();
+            var pets = json["pets"]
+                .ToArray()
+                .Select(
+                    ja => ja.Values<string>()
+                        .Select(Guid.Parse)
+                        .ToArray())
+                .ToArray();
             var extraDataSize = json["extraDataSize"].Value<int>();
 
             var initializationCalls = new Task[count];
@@ -114,7 +133,7 @@
             {
                 var bestFriend = i + 1 == count ? 0 : i + 1;
 
-                initializationCalls[i] = create(ids[i], ids[bestFriend], names[i * 2], names[i * 2 + 1], extraDataSize);
+                initializationCalls[i] = create(ids[i], ids[bestFriend], names[i * 2], names[i * 2 + 1], pets[i], extraDataSize);
             }
 
             await Task.WhenAll(initializationCalls);

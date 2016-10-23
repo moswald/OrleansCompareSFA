@@ -15,6 +15,20 @@
         </Extension>
       </Extensions>
     </StatefulServiceType>
+    <StatefulServiceType ServiceTypeName="PetActorServiceType">
+      <Extensions>
+        <Extension Name="__GeneratedServiceType__" GeneratedId="4c829881-285b-426b-9aff-1a501e486468|None">
+          <GeneratedNames xmlns="http://schemas.microsoft.com/2015/03/fabact-no-schema">
+            <DefaultService Name="PetActorService" />
+            <ServiceEndpoint Name="PetActorServiceEndpoint" />
+            <ReplicatorEndpoint Name="PetActorServiceReplicatorEndpoint" />
+            <ReplicatorConfigSection Name="PetActorServiceReplicatorConfig" />
+            <ReplicatorSecurityConfigSection Name="PetActorServiceReplicatorSecurityConfig" />
+            <StoreConfigSection Name="PetActorServiceLocalStoreConfig" />
+          </GeneratedNames>
+        </Extension>
+      </Extensions>
+    </StatefulServiceType>
   </ServiceTypes>
   <CodePackage Name="Code" Version="1.0.0">
     <EntryPoint>
@@ -28,6 +42,8 @@
     <Endpoints>
       <Endpoint Name="FriendlyActorServiceEndpoint" />
       <Endpoint Name="FriendlyActorServiceReplicatorEndpoint" />
+      <Endpoint Name="PetActorServiceEndpoint" />
+      <Endpoint Name="PetActorServiceReplicatorEndpoint" />
     </Endpoints>
   </Resources>
   <!-- The content will be generated during build -->

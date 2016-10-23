@@ -13,6 +13,9 @@
                 ActorRuntime.RegisterActorAsync<FriendlyActor>(
                    (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
 
+                ActorRuntime.RegisterActorAsync<PetActor>(
+                   (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
+
                 Thread.Sleep(Timeout.Infinite);
             }
             catch (Exception e)

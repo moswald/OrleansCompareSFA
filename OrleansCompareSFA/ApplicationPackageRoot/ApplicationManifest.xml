@@ -15,6 +15,9 @@
     <Parameter Name="FriendlyActorService_PartitionCount" DefaultValue="10" />
     <Parameter Name="FriendlyActorService_MinReplicaSetSize" DefaultValue="3" />
     <Parameter Name="FriendlyActorService_TargetReplicaSetSize" DefaultValue="3" />
+    <Parameter Name="PetActorService_PartitionCount" DefaultValue="10" />
+    <Parameter Name="PetActorService_MinReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="PetActorService_TargetReplicaSetSize" DefaultValue="1" />
   </Parameters>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="ActorsPkg" ServiceManifestVersion="1.0.0" />
@@ -65,6 +68,11 @@
     <Service Name="FriendlyActorService" GeneratedIdRef="e92ce48a-235f-4c4a-b1da-0d3aa8362d93|Persisted">
       <StatefulService ServiceTypeName="FriendlyActorServiceType" TargetReplicaSetSize="[FriendlyActorService_TargetReplicaSetSize]" MinReplicaSetSize="[FriendlyActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[FriendlyActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+      </StatefulService>
+    </Service>
+    <Service Name="PetActorService" GeneratedIdRef="4c829881-285b-426b-9aff-1a501e486468|None">
+      <StatefulService ServiceTypeName="PetActorServiceType" TargetReplicaSetSize="[PetActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PetActorService_MinReplicaSetSize]">
+        <UniformInt64Partition PartitionCount="[PetActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>
   </DefaultServices>

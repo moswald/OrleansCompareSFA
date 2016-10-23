@@ -13,5 +13,6 @@
     <Parameter Name="TestRunnerApi_TestSetupBlobName" Value="testsetup.json" />
     <Parameter Name="TestRunnerApi_PlacementConstraints" Value="" />
     <Parameter Name="FriendlyActorService_PartitionCount" Value="1" />
+    <Parameter Name="PetActorService_PartitionCount" Value="1" />
   </Parameters>
 </Application>
