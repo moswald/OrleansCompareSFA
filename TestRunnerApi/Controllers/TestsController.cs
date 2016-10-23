@@ -1,6 +1,7 @@
 ﻿namespace TestRunnerApi.Controllers
 {
     using System;
+    using System.Collections.Immutable;
     using System.Diagnostics;
     using System.Fabric;
     using System.Linq;
@@ -13,7 +14,6 @@
     using Microsoft.WindowsAzure.Storage;
     using Microsoft.WindowsAzure.Storage.Blob;
     using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
     using Orleans;
 
     [RoutePrefix("api/tests")]
@@ -47,24 +47,19 @@
             await _blobContainer.CreateAsync().ConfigureAwait(false);
             await _blobContainer.SetPermissionsAsync(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Container }).ConfigureAwait(false);
 
-            var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
-            var names = Enumerable.Range(0, count * 2).Select(_ => RandomString(NameLength)).ToArray();
-            var pets = Enumerable.Range(0, count)
-                .Select(_ => Rng.Next(0, MaxPets + 1))
-                .Select(petCount => Enumerable.Range(0, petCount).Select(_ => Guid.NewGuid()).ToArray())
-                .ToArray();
+            var testState = new TestState
+            {
+                Count = count,
+                Ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToImmutableArray(),
+                Names = Enumerable.Range(0, count * 2).Select(_ => RandomString(NameLength)).ToImmutableArray(),
+                PetIds = Enumerable.Range(0, count)
+                    .Select(_ => Rng.Next(0, MaxPets + 1))
+                    .Select(petCount => Enumerable.Range(0, petCount).Select(_ => Guid.NewGuid()).ToImmutableArray())
+                    .ToImmutableArray(),
+                ExtraDataSize = extraDataSize
+            };
 
-            var jsonValue = JObject
-                .FromObject(
-                    new
-                    {
-                        count,
-                        ids,
-                        names,
-                        pets,
-                        extraDataSize
-                    })
-                .ToString(Formatting.Indented);
+            var jsonValue = JsonConvert.SerializeObject(testState);
 
             var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
             await blob.UploadTextAsync(jsonValue).ConfigureAwait(false);
@@ -73,7 +68,7 @@
         }
 
         [HttpGet]
-        [Route("initializeOrleans/")]
+        [Route("initialize/orleans")]
         public async Task<IHttpActionResult> InitializeOrleans()
         {
             var result = await Initialize(
@@ -90,7 +85,7 @@
         }
 
         [HttpGet]
-        [Route("initializeActors/")]
+        [Route("initialize/actors")]
         public async Task<IHttpActionResult> InitializeActors()
         {
             var result = await Initialize(
@@ -106,34 +101,22 @@
             return Ok(result);
         }
 
-        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, Guid[], int, Task> create)
+        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
         {
             var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
             var jsonValue = await blob.DownloadTextAsync().ConfigureAwait(false);
 
-            var json = JObject.Parse(jsonValue);
+            var testState = JsonConvert.DeserializeObject<TestState>(jsonValue);
 
-            var count = json["count"].Value<int>();
-            var ids = json["ids"].Values<string>().Select(Guid.Parse).ToArray();
-            var names = json["names"].Values<string>().ToArray();
-            var pets = json["pets"]
-                .ToArray()
-                .Select(
-                    ja => ja.Values<string>()
-                        .Select(Guid.Parse)
-                        .ToArray())
-                .ToArray();
-            var extraDataSize = json["extraDataSize"].Value<int>();
-
-            var initializationCalls = new Task[count];
+            var initializationCalls = new Task[testState.Count];
 
             var sw = Stopwatch.StartNew();
 
-            for (var i = 0; i != count; ++i)
+            for (var i = 0; i != testState.Count; ++i)
             {
-                var bestFriend = i + 1 == count ? 0 : i + 1;
+                var bestFriend = i + 1 == testState.Count ? 0 : i + 1;
 
-                initializationCalls[i] = create(ids[i], ids[bestFriend], names[i * 2], names[i * 2 + 1], pets[i], extraDataSize);
+                initializationCalls[i] = create(testState.Ids[i], testState.Ids[bestFriend], testState.Names[i * 2], testState.Names[i * 2 + 1], testState.PetIds[i], testState.ExtraDataSize);
             }
 
             await Task.WhenAll(initializationCalls);
@@ -144,5 +127,14 @@
         }
 
         static string RandomString(int length) => new string(Enumerable.Range(0, length).Select(c => (char)Rng.Next('A', 'Z' + 1)).ToArray());
+
+        class TestState
+        {
+            public int Count { get; set; }
+            public ImmutableArray<Guid> Ids { get; set; }
+            public ImmutableArray<string> Names { get; set; }
+            public ImmutableArray<ImmutableArray<Guid>> PetIds { get; set; }
+            public int ExtraDataSize { get; set; }
+        }
     }
 }
