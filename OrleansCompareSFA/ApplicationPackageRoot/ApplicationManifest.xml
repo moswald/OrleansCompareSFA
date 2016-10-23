@@ -8,6 +8,9 @@
     <Parameter Name="OrleansSiloHost_RemindersStorageConnectionString" DefaultValue="" />
     <Parameter Name="OrleansSiloHost_PlacementConstraints" DefaultValue="" />
     <Parameter Name="TestRunnerApi_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="TestRunnerApi_AzureStorageConnectionString" DefaultValue="" />
+    <Parameter Name="TestRunnerApi_BlobStorageContainer" DefaultValue="" />
+    <Parameter Name="TestRunnerApi_TestSetupBlobName" DefaultValue="" />
     <Parameter Name="TestRunnerApi_PlacementConstraints" DefaultValue="" />
     <Parameter Name="FriendlyActorService_PartitionCount" DefaultValue="10" />
     <Parameter Name="FriendlyActorService_MinReplicaSetSize" DefaultValue="3" />
@@ -23,6 +26,9 @@
         <Settings>
           <Section Name="Storage">
             <Parameter Name="SiloStorageConnectionString" Value="[Shared_OrleansSiloStorageConnectionString]" />
+            <Parameter Name="AzureStorageConnectionString" Value="[TestRunnerApi_AzureStorageConnectionString]" />
+            <Parameter Name="BlobStorageContainer" Value="[TestRunnerApi_BlobStorageContainer]" />
+            <Parameter Name="TestSetupBlobName" Value="[TestRunnerApi_TestSetupBlobName]" />
           </Section>
         </Settings>
       </ConfigOverride>
@@ -56,8 +62,8 @@
         <PlacementConstraints>[OrleansSiloHost_PlacementConstraints]</PlacementConstraints>
       </StatelessService>
     </Service>
-    <Service Name="FriendlyActorService" GeneratedIdRef="b43ce790-5941-4cfc-b6e2-b35025196bc4|Persisted">
-      <StatefulService ServiceTypeName="ActorsActorServiceType" TargetReplicaSetSize="[FriendlyActorService_TargetReplicaSetSize]" MinReplicaSetSize="[FriendlyActorService_MinReplicaSetSize]">
+    <Service Name="FriendlyActorService" GeneratedIdRef="e92ce48a-235f-4c4a-b1da-0d3aa8362d93|Persisted">
+      <StatefulService ServiceTypeName="FriendlyActorServiceType" TargetReplicaSetSize="[FriendlyActorService_TargetReplicaSetSize]" MinReplicaSetSize="[FriendlyActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[FriendlyActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>

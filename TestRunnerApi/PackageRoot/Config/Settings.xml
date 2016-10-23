@@ -4,5 +4,14 @@
       <Parameter Name="SiloStorageConnectionString"
                  Value=""
                  MustOverride="true" />
+    <Parameter Name="AzureStorageConnectionString"
+               Value=""
+               MustOverride="true" />
+    <Parameter Name="BlobStorageContainer"
+               Value=""
+               MustOverride="true" />
+    <Parameter Name="TestSetupBlobName"
+               Value=""
+               MustOverride="true" />
   </Section>
 </Settings>
