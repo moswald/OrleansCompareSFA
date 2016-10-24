@@ -1,6 +1,7 @@
 ﻿namespace TestRunnerApi.Controllers
 {
     using System;
+    using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
     using System.Fabric;
@@ -133,6 +134,36 @@
             return Ok(new { success = results.Item1, time = results.Item2 } );
         }
 
+        [HttpGet]
+        [Route("query/pets/orleans")]
+        public async Task<IHttpActionResult> QueryOrleansPets(int iterations)
+        {
+            var results = await QueryPetNames(
+                iterations,
+                guid =>
+                {
+                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
+                    return grain.GetPetNames();
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
+        [HttpGet]
+        [Route("query/pets/actors")]
+        public async Task<IHttpActionResult> QueryActorsPets(int iterations)
+        {
+            var results = await QueryPetNames(
+                iterations,
+                guid =>
+                {
+                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
+                    return actor.GetPetNames();
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
         async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
         {
             var testState = await LoadTestState();
@@ -177,7 +208,31 @@
             return Tuple.Create(results.All(x => x), sw.Elapsed);
         }
 
+        async Task<Tuple<bool, TimeSpan>> QueryPetNames(int iterations, Func<Guid, Task<IEnumerable<string>>> queryNames)
+        {
+            var testState = await LoadTestState();
+
+            var queryCalls = new Task<bool>[iterations * testState.Count];
+
+            var sw = Stopwatch.StartNew();
+
+            for (var iteration = 0; iteration != iterations; ++iteration)
+            {
+                for (var grainIndex = 0; grainIndex != testState.Count; ++grainIndex)
+                {
+                    queryCalls[iteration * testState.Count + grainIndex] = CompareNames(queryNames(testState.Ids[grainIndex]), testState.PetNames(grainIndex));
+                }
+            }
+
+            var results = await Task.WhenAll(queryCalls);
+            sw.Stop();
+
+            return Tuple.Create(results.All(x => x), sw.Elapsed);
+        }
+
         static async Task<bool> CompareNames(Task<string> remoteName, string expected) => await remoteName == expected;
+
+        static async Task<bool> CompareNames(Task<IEnumerable<string>> remotePetNames, IEnumerable<string> expectedNames) => !(await remotePetNames).Except(expectedNames).Any();
 
         async Task<TestState> LoadTestState()
         {
@@ -199,6 +254,7 @@
 
             public string FirstName(int index) => Names[index * 2];
             public string LastName(int index) => Names[index * 2 + 1];
+            public IEnumerable<string> PetNames(int index) => PetIds[index].Any() ? PetIds[index].Select(g => g.ToString()).ToArray() : Array.Empty<string>();
         }
     }
 }

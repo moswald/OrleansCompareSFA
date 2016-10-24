@@ -22,5 +22,7 @@
 
             return Task.CompletedTask;
         }
+
+        public Task<string> GetName() => StateManager.GetStateAsync<string>(NameState);
     }
 }

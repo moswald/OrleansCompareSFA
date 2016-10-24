@@ -1,6 +1,7 @@
 ﻿namespace Actors
 {
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
     using Interfaces;
     using Microsoft.ServiceFabric.Actors;
@@ -37,6 +38,14 @@
             var lastName = await StateManager.GetStateAsync<string>(LastNameState);
 
             return firstName + separator + lastName;
+        }
+
+        public async Task<IEnumerable<string>> GetPetNames()
+        {
+            var pets = await StateManager.GetStateAsync<IEnumerable<IPetActor>>(PetsState);
+
+            var names = pets.Select(pet => pet.GetName());
+            return await Task.WhenAll(names);
         }
     }
 }

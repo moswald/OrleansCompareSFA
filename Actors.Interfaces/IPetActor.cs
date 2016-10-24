@@ -6,5 +6,6 @@
     public interface IPetActor : IActor
     {
         Task Initialize(IFriendlyActor owner, string name);
+        Task<string> GetName();
     }
 }

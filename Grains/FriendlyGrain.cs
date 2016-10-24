@@ -3,6 +3,7 @@ namespace Grains
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Linq;
     using System.Threading.Tasks;
     using GrainInterfaces;
     using Orleans;
@@ -34,5 +35,11 @@ namespace Grains
         }
 
         public Task<string> GetFullName(string separator) => Task.FromResult(State.FirstName + separator + State.LastName);
+
+        public async Task<IEnumerable<string>> GetPetNames()
+        {
+            var names = State.Pets.Select(pet => pet.GetName());
+            return (await Task.WhenAll(names)).ToImmutableArray();
+        }
     }
 }

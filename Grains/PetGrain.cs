@@ -22,5 +22,7 @@
 
             return WriteStateAsync();
         }
+
+        public Task<string> GetName() => Task.FromResult(State.Name);
     }
 }

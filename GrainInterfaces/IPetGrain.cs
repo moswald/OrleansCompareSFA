@@ -6,5 +6,7 @@
     public interface IPetGrain : IGrainWithGuidKey
     {
         Task Initialize(IFriendlyGrain owner, string name);
+
+        Task<string> GetName();
     }
 }
