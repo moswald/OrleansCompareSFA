@@ -1,15 +1,15 @@
 namespace GrainInterfaces
 {
-    using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Orleans;
 
     public interface IFriendlyGrain : IGrainWithGuidKey
     {
-        Task Initialize(Guid bestFriend, string firstName, string lastName, IEnumerable<IPetGrain> petNames, int extraDataSize);
+        Task Initialize(IFriendlyGrain bestFriend, string firstName, string lastName, IList<IPetGrain> petNames, int extraDataSize);
 
         Task<string> GetFullName(string separator);
         Task<IEnumerable<string>> GetPetNames();
+        Task<string> GetFriendNames(string separator, int count);
     }
 }

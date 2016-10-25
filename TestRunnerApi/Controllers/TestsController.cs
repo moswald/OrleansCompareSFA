@@ -76,10 +76,11 @@
                 async (grainId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
                 {
                     var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(grainId);
-                    var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToArray();
+                    var bestFriend = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(bestFriendId);
+                    var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToImmutableArray();
 
                     await Task.WhenAll(pets.Select(pet => pet.Initialize(grain, pet.GetPrimaryKey().ToString()))).ConfigureAwait(false);
-                    await grain.Initialize(bestFriendId, firstName, lastName, pets, extraDataSize).ConfigureAwait(false);
+                    await grain.Initialize(bestFriend, firstName, lastName, pets, extraDataSize).ConfigureAwait(false);
                 });
 
             return Ok(result);
@@ -93,10 +94,11 @@
                 async (actorId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
                 {
                     var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(actorId));
-                    var pets = petIds.Select(petId => ActorProxy.Create<IPetActor>(new ActorId(petId))).ToArray();
+                    var bestFriend = ActorProxy.Create<IFriendlyActor>(new ActorId(bestFriendId));
+                    var pets = petIds.Select(petId => ActorProxy.Create<IPetActor>(new ActorId(petId))).ToImmutableArray();
 
                     await Task.WhenAll(pets.Select(pet => pet.Initialize(actor, pet.GetActorId().ToString()))).ConfigureAwait(false);
-                    await actor.Initialize(new ActorId(bestFriendId), firstName, lastName, pets, extraDataSize);
+                    await actor.Initialize(bestFriend, firstName, lastName, pets, extraDataSize);
                 });
 
             return Ok(result);
@@ -164,6 +166,40 @@
             return Ok(new { success = results.Item1, time = results.Item2 });
         }
 
+        [HttpGet]
+        [Route("query/friends/orleans")]
+        public async Task<IHttpActionResult> QueryOrleansFriends(int iterations, int depth = 3, string separator = ", ")
+        {
+            var results = await QueryFriendNames(
+                iterations,
+                depth,
+                separator,
+                guid =>
+                {
+                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
+                    return grain.GetFriendNames(separator, depth);
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
+        [HttpGet]
+        [Route("query/friends/actors")]
+        public async Task<IHttpActionResult> QueryActorsFriends(int iterations, int depth = 3, string separator = ", ")
+        {
+            var results = await QueryFriendNames(
+                iterations,
+                depth,
+                separator,
+                guid =>
+                {
+                    var grain = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
+                    return grain.GetFriendNames(separator, depth);
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
         async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
         {
             var testState = await LoadTestState();
@@ -174,9 +210,8 @@
 
             for (var i = 0; i != testState.Count; ++i)
             {
-                var bestFriend = i + 1 == testState.Count ? 0 : i + 1;
-
-                initializationCalls[i] = create(testState.Ids[i], testState.Ids[bestFriend], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraDataSize);
+                var friendIndex = testState.FriendIndex(i);
+                initializationCalls[i] = create(testState.Ids[i], testState.Ids[friendIndex], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraDataSize);
             }
 
             await Task.WhenAll(initializationCalls);
@@ -196,9 +231,9 @@
 
             for (var iteration = 0; iteration != iterations; ++iteration)
             {
-                for (var grainIndex = 0; grainIndex != testState.Count; ++grainIndex)
+                for (var index = 0; index != testState.Count; ++index)
                 {
-                    queryCalls[iteration * testState.Count + grainIndex] = CompareNames(queryName(testState.Ids[grainIndex]), testState.FirstName(grainIndex) + separator + testState.LastName(grainIndex));
+                    queryCalls[iteration * testState.Count + index] = CompareNames(queryName(testState.Ids[index]), testState.FirstName(index) + separator + testState.LastName(index));
                 }
             }
 
@@ -230,7 +265,38 @@
             return Tuple.Create(results.All(x => x), sw.Elapsed);
         }
 
-        static async Task<bool> CompareNames(Task<string> remoteName, string expected) => await remoteName == expected;
+        async Task<Tuple<bool, TimeSpan>> QueryFriendNames(int iterations, int depth, string separator, Func<Guid, Task<string>> queryNames)
+        {
+            var testState = await LoadTestState();
+
+            var queryCalls = new Task<bool>[iterations * testState.Count];
+
+            var sw = Stopwatch.StartNew();
+
+            for (var iteration = 0; iteration != iterations; ++iteration)
+            {
+                for (var index = 0; index < testState.Count; index += depth + 1)
+                {
+                    var friendNames = testState.FriendNames(index, depth);
+
+                    queryCalls[iteration * testState.Count + index] =
+                        CompareNames(
+                            queryNames(testState.Ids[index]),
+                            string.Join(separator, friendNames));
+                }
+            }
+
+            var results = await Task.WhenAll(queryCalls.Where(t => t != null));
+            sw.Stop();
+
+            return Tuple.Create(results.All(x => x), sw.Elapsed);
+        }
+
+        static async Task<bool> CompareNames(Task<string> remoteName, string expected)
+        {
+            var remote = await remoteName;
+            return remote == expected;
+        }
 
         static async Task<bool> CompareNames(Task<IEnumerable<string>> remotePetNames, IEnumerable<string> expectedNames) => !(await remotePetNames).Except(expectedNames).Any();
 
@@ -255,6 +321,20 @@
             public string FirstName(int index) => Names[index * 2];
             public string LastName(int index) => Names[index * 2 + 1];
             public IEnumerable<string> PetNames(int index) => PetIds[index].Any() ? PetIds[index].Select(g => g.ToString()).ToArray() : Array.Empty<string>();
+            public int FriendIndex(int index) => index + 1 == Count ? 0 : index + 1;
+
+            public IEnumerable<string> FriendNames(int index, int count)
+            {
+                var names = new List<string>();
+
+                for (var i = 0; i != count + 1; ++i)
+                {
+                    names.Add(FirstName(index));
+                    index = FriendIndex(index);
+                }
+
+                return names;
+            }
         }
     }
 }

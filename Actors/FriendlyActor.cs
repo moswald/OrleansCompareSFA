@@ -21,7 +21,7 @@
         {
         }
 
-        public Task Initialize(ActorId bestFriend, string firstName, string lastName, IEnumerable<IPetActor> pets, int extraDataSize)
+        Task IFriendlyActor.Initialize(IFriendlyActor bestFriend, string firstName, string lastName, IList<IPetActor> pets, int extraDataSize)
         {
             StateManager.AddStateAsync(BestFriendState, bestFriend);
             StateManager.AddStateAsync(FirstNameState, firstName);
@@ -32,7 +32,7 @@
             return Task.CompletedTask;
         }
 
-        public async Task<string> GetFullName(string separator)
+        async Task<string> IFriendlyActor.GetFullName(string separator)
         {
             var firstName = await StateManager.GetStateAsync<string>(FirstNameState);
             var lastName = await StateManager.GetStateAsync<string>(LastNameState);
@@ -40,12 +40,23 @@
             return firstName + separator + lastName;
         }
 
-        public async Task<IEnumerable<string>> GetPetNames()
+        async Task<IEnumerable<string>> IFriendlyActor.GetPetNames()
         {
             var pets = await StateManager.GetStateAsync<IEnumerable<IPetActor>>(PetsState);
 
             var names = pets.Select(pet => pet.GetName());
             return await Task.WhenAll(names);
+        }
+
+        async Task<string> IFriendlyActor.GetFriendNames(string separator, int count)
+        {
+            if (count == 0)
+            {
+                return await StateManager.GetStateAsync<string>(FirstNameState);
+            }
+
+            var bestFriend = await StateManager.GetStateAsync<IFriendlyActor>(BestFriendState);
+            return await StateManager.GetStateAsync<string>(FirstNameState) + separator + await bestFriend.GetFriendNames(separator, --count);
         }
     }
 }

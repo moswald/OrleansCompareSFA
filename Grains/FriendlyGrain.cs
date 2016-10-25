@@ -1,6 +1,5 @@
 namespace Grains
 {
-    using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
@@ -10,9 +9,9 @@ namespace Grains
 
     class FriendlyGrainState
     {
-        public Guid BestFriend { get; set; } = Guid.Empty;
         public string FirstName { get; set; }
         public string LastName { get; set; }
+        public IFriendlyGrain BestFriend { get; set; }
         public IImmutableSet<IPetGrain> Pets { get; set; } = ImmutableHashSet<IPetGrain>.Empty;
 
         public byte[] ExtraData { get; set; }
@@ -20,13 +19,13 @@ namespace Grains
 
     class FriendlyGrain : Grain<FriendlyGrainState>, IFriendlyGrain
     {
-        public Task Initialize(Guid bestFriend, string firstName, string lastName, IEnumerable<IPetGrain> pets, int extraDataSize)
+        Task IFriendlyGrain.Initialize(IFriendlyGrain bestFriend, string firstName, string lastName, IList<IPetGrain> pets, int extraDataSize)
         {
             State = new FriendlyGrainState
             {
-                BestFriend = bestFriend,
                 FirstName = firstName,
                 LastName = lastName,
+                BestFriend = bestFriend.Cast<IFriendlyGrain>(),
                 Pets = pets.ToImmutableHashSet(),
                 ExtraData = new byte[extraDataSize],
             };
@@ -34,12 +33,22 @@ namespace Grains
             return WriteStateAsync();
         }
 
-        public Task<string> GetFullName(string separator) => Task.FromResult(State.FirstName + separator + State.LastName);
+        Task<string> IFriendlyGrain.GetFullName(string separator) => Task.FromResult(State.FirstName + separator + State.LastName);
 
-        public async Task<IEnumerable<string>> GetPetNames()
+        async Task<IEnumerable<string>> IFriendlyGrain.GetPetNames()
         {
             var names = State.Pets.Select(pet => pet.GetName());
             return (await Task.WhenAll(names)).ToImmutableArray();
+        }
+
+        async Task<string> IFriendlyGrain.GetFriendNames(string separator, int count)
+        {
+            if (count == 0)
+            {
+                return State.FirstName;
+            }
+
+            return State.FirstName + separator + await State.BestFriend.GetFriendNames(separator, --count);
         }
     }
 }
