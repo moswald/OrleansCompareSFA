@@ -18,6 +18,9 @@
     <Parameter Name="PetActorService_PartitionCount" DefaultValue="10" />
     <Parameter Name="PetActorService_MinReplicaSetSize" DefaultValue="1" />
     <Parameter Name="PetActorService_TargetReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="CalculatorActorService_PartitionCount" DefaultValue="10" />
+    <Parameter Name="CalculatorActorService_MinReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="CalculatorActorService_TargetReplicaSetSize" DefaultValue="1" />
   </Parameters>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="ActorsPkg" ServiceManifestVersion="1.0.0" />
@@ -73,6 +76,11 @@
     <Service Name="PetActorService" GeneratedIdRef="4c829881-285b-426b-9aff-1a501e486468|None">
       <StatefulService ServiceTypeName="PetActorServiceType" TargetReplicaSetSize="[PetActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PetActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[PetActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+      </StatefulService>
+    </Service>
+    <Service Name="CalculatorActorService" GeneratedIdRef="88e7d71b-719f-4248-a8f3-545281ea0cd0|None">
+      <StatefulService ServiceTypeName="CalculatorActorServiceType" TargetReplicaSetSize="[CalculatorActorService_TargetReplicaSetSize]" MinReplicaSetSize="[CalculatorActorService_MinReplicaSetSize]">
+        <UniformInt64Partition PartitionCount="[CalculatorActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>
   </DefaultServices>

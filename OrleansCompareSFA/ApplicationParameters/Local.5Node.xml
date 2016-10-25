@@ -12,7 +12,8 @@
     <Parameter Name="TestRunnerApi_BlobStorageContainer" Value="orleans-sfa" />
     <Parameter Name="TestRunnerApi_TestSetupBlobName" Value="testsetup.json" />
     <Parameter Name="TestRunnerApi_PlacementConstraints" Value="" />
-    <Parameter Name="FriendlyActorService_PartitionCount" Value="1" />
-    <Parameter Name="PetActorService_PartitionCount" Value="1" />
+    <Parameter Name="FriendlyActorService_PartitionCount" Value="20" />
+    <Parameter Name="PetActorService_PartitionCount" Value="20" />
+    <Parameter Name="CalculatorActorService_PartitionCount" Value="20" />
   </Parameters>
 </Application>

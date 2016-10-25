@@ -55,5 +55,8 @@
             var bestFriend = await StateManager.GetStateAsync<IFriendlyActor>(BestFriendState);
             return await StateManager.GetStateAsync<string>(FirstNameState) + separator + await bestFriend.GetFriendNames(separator, --count);
         }
+
+        Task<string> IFriendlyActor.GetLastName() => StateManager.GetStateAsync<string>(LastNameState);
+        Task IFriendlyActor.UpdateLastName(string newName) => StateManager.SetStateAsync(LastNameState, newName);
     }
 }

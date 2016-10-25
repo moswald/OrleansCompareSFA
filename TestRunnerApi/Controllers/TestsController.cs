@@ -42,7 +42,7 @@
 
         [HttpGet]
         [Route("setup")]
-        public async Task<IHttpActionResult> Setup(int count, int extraDataSize = 0)
+        public async Task<IHttpActionResult> Setup(int count, int extraDataSize = 0, int calculatorTestSize = 100000)
         {
             await _blobContainer.DeleteIfExistsAsync().ConfigureAwait(false);
             await _blobContainer.CreateAsync().ConfigureAwait(false);
@@ -57,13 +57,13 @@
                     .Select(_ => Rng.Next(0, MaxPets + 1))
                     .Select(petCount => Enumerable.Range(0, petCount).Select(_ => Guid.NewGuid()).ToImmutableArray())
                     .ToImmutableArray(),
-                ExtraDataSize = extraDataSize
+                ExtraDataSize = extraDataSize,
+                CalculatorTestValues = Enumerable.Range(0, calculatorTestSize).Select(_ => Rng.NextDouble()).ToImmutableArray()
             };
 
-            var jsonValue = JsonConvert.SerializeObject(testState);
+            testState.ExpectedSum = testState.CalculatorTestValues.AsParallel().Sum();
 
-            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
-            await blob.UploadTextAsync(jsonValue).ConfigureAwait(false);
+            await SaveTestState(testState);
 
             return Ok();
         }
@@ -193,11 +193,87 @@
                 separator,
                 guid =>
                 {
-                    var grain = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
-                    return grain.GetFriendNames(separator, depth);
+                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
+                    return actor.GetFriendNames(separator, depth);
                 });
 
             return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
+        [HttpGet]
+        [Route("update/lastName/orleans")]
+        public async Task<IHttpActionResult> UpdateOrleansLastName(int iterations)
+        {
+            var results = await UpdateNames(
+                iterations,
+                async (guid, name) =>
+                {
+                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
+                    await grain.UpdateLastName(name);
+                    return await grain.GetLastName();
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
+        [HttpGet]
+        [Route("update/lastName/actors")]
+        public async Task<IHttpActionResult> UpdateActorsLastName(int iterations)
+        {
+            var results = await UpdateNames(
+                iterations,
+                async (guid, name) =>
+                {
+                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
+                    await actor.UpdateLastName(name);
+                    return await actor.GetLastName();
+                });
+
+            return Ok(new { success = results.Item1, time = results.Item2 });
+        }
+
+        [HttpGet]
+        [Route("calculator/orleans")]
+        public async Task<IHttpActionResult> OrleansCalculator()
+        {
+            var testState = await LoadTestState();
+
+            var sw = Stopwatch.StartNew();
+
+            var result = await testState.CalculatorTestValues
+                .AsParallel()
+                .Aggregate(
+                    Task.FromResult(0.0),
+                    async (a, b) =>
+                    {
+                        var grain = GrainClient.GrainFactory.GetGrain<ICalculatorGrain>(0);
+                        return await grain.Add(await a, b);
+                    });
+
+            sw.Stop();
+            return Ok(new { success = Math.Abs(result - testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
+        }
+
+        [HttpGet]
+        [Route("calculator/actors")]
+        public async Task<IHttpActionResult> ActorsCalculator()
+        {
+            var testState = await LoadTestState();
+
+            var sw = Stopwatch.StartNew();
+
+            var result = await testState.CalculatorTestValues
+                .AsParallel()
+                .Aggregate(
+                    Task.FromResult(0.0),
+                    async (a, b) =>
+                    {
+                        var actor = ActorProxy.Create<ICalculatorActor>(new ActorId(0));
+                        return await actor.Add(await a, b);
+                    });
+
+            sw.Stop();
+            return Ok(new { success = Math.Abs(result - testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
         }
 
         async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
@@ -292,6 +368,39 @@
             return Tuple.Create(results.All(x => x), sw.Elapsed);
         }
 
+        async Task<Tuple<bool, TimeSpan>> UpdateNames(int iterations, Func<Guid, string, Task<string>> updateName)
+        {
+            var testState = await LoadTestState();
+            var newLastNames = Enumerable.Range(0, iterations)
+                .Select(_ => Enumerable.Range(0, testState.Count)
+                    .Select(__ => RandomString(NameLength)).ToImmutableArray())
+                .ToImmutableArray();
+
+            var results = new List<bool>(iterations * testState.Count);
+
+            var sw = Stopwatch.StartNew();
+
+            for (var iteration = 0; iteration != iterations; ++iteration)
+            {
+                var updateCalls = new Task<bool>[testState.Count];
+
+                for (var index = 0; index < testState.Count; ++index)
+                {
+                    updateCalls[index] =
+                        CompareNames(
+                            updateName(testState.Ids[index], newLastNames[iteration][index]),
+                            newLastNames[iteration][index]);
+                }
+
+                // have to await each iteration or else the write/read pairs could get interleaved between iterations
+                results.AddRange(await Task.WhenAll(updateCalls));
+            }
+            
+            sw.Stop();
+
+            return Tuple.Create(results.All(x => x), sw.Elapsed);
+        }
+
         static async Task<bool> CompareNames(Task<string> remoteName, string expected)
         {
             var remote = await remoteName;
@@ -299,6 +408,14 @@
         }
 
         static async Task<bool> CompareNames(Task<IEnumerable<string>> remotePetNames, IEnumerable<string> expectedNames) => !(await remotePetNames).Except(expectedNames).Any();
+
+        async Task SaveTestState(TestState testState)
+        {
+            var jsonValue = JsonConvert.SerializeObject(testState);
+
+            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
+            await blob.UploadTextAsync(jsonValue).ConfigureAwait(false);
+        }
 
         async Task<TestState> LoadTestState()
         {
@@ -317,6 +434,9 @@
             public ImmutableArray<string> Names { get; set; }
             public ImmutableArray<ImmutableArray<Guid>> PetIds { get; set; }
             public int ExtraDataSize { get; set; }
+
+            public ImmutableArray<double> CalculatorTestValues { get; set; }
+            public double ExpectedSum { get; set; }
 
             public string FirstName(int index) => Names[index * 2];
             public string LastName(int index) => Names[index * 2 + 1];

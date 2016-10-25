@@ -9,5 +9,8 @@
     <Parameter Name="PetActorService_PartitionCount" Value="1" />
     <Parameter Name="PetActorService_TargetReplicaSetSize" Value="1" />
     <Parameter Name="PetActorService_MinReplicaSetSize" Value="1" />
+    <Parameter Name="CalculatorActorService_PartitionCount" Value="1" />
+    <Parameter Name="CalculatorActorService_TargetReplicaSetSize" Value="1" />
+    <Parameter Name="CalculatorActorService_MinReplicaSetSize" Value="1" />
   </Parameters>
 </Application>

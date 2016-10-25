@@ -11,5 +11,8 @@
         Task<string> GetFullName(string separator);
         Task<IEnumerable<string>> GetPetNames();
         Task<string> GetFriendNames(string separator, int count);
+
+        Task<string> GetLastName();
+        Task UpdateLastName(string newName);
     }
 }

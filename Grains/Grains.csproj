@@ -95,6 +95,7 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CalculatorGrain.cs" />
     <Compile Include="FriendlyGrain.cs" />
     <Compile Include="PetGrain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -50,5 +50,13 @@ namespace Grains
 
             return State.FirstName + separator + await State.BestFriend.GetFriendNames(separator, --count);
         }
+
+        Task<string> IFriendlyGrain.GetLastName() => Task.FromResult(State.LastName);
+
+        Task IFriendlyGrain.UpdateLastName(string newName)
+        {
+            State.LastName = newName;
+            return WriteStateAsync();
+        }
     }
 }

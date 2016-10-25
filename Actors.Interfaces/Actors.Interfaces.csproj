@@ -75,6 +75,7 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ICalculatorActor.cs" />
     <Compile Include="IPetActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="IFriendlyActor.cs" />
