@@ -21,6 +21,7 @@
     <Parameter Name="CalculatorActorService_PartitionCount" DefaultValue="10" />
     <Parameter Name="CalculatorActorService_MinReplicaSetSize" DefaultValue="1" />
     <Parameter Name="CalculatorActorService_TargetReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="ActorService_PlacementConstraints" DefaultValue="" />
   </Parameters>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="ActorsPkg" ServiceManifestVersion="1.0.0" />
@@ -71,16 +72,19 @@
     <Service Name="FriendlyActorService" GeneratedIdRef="e92ce48a-235f-4c4a-b1da-0d3aa8362d93|Persisted">
       <StatefulService ServiceTypeName="FriendlyActorServiceType" TargetReplicaSetSize="[FriendlyActorService_TargetReplicaSetSize]" MinReplicaSetSize="[FriendlyActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[FriendlyActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+        <PlacementConstraints>[ActorService_PlacementConstraints]</PlacementConstraints>
       </StatefulService>
     </Service>
     <Service Name="PetActorService" GeneratedIdRef="4c829881-285b-426b-9aff-1a501e486468|None">
       <StatefulService ServiceTypeName="PetActorServiceType" TargetReplicaSetSize="[PetActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PetActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[PetActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+        <PlacementConstraints>[ActorService_PlacementConstraints]</PlacementConstraints>
       </StatefulService>
     </Service>
     <Service Name="CalculatorActorService" GeneratedIdRef="88e7d71b-719f-4248-a8f3-545281ea0cd0|None">
       <StatefulService ServiceTypeName="CalculatorActorServiceType" TargetReplicaSetSize="[CalculatorActorService_TargetReplicaSetSize]" MinReplicaSetSize="[CalculatorActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[CalculatorActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+        <PlacementConstraints>[ActorService_PlacementConstraints]</PlacementConstraints>
       </StatefulService>
     </Service>
   </DefaultServices>

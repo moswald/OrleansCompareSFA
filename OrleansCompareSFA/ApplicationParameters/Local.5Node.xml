@@ -15,5 +15,6 @@
     <Parameter Name="FriendlyActorService_PartitionCount" Value="20" />
     <Parameter Name="PetActorService_PartitionCount" Value="20" />
     <Parameter Name="CalculatorActorService_PartitionCount" Value="20" />
+    <Parameter Name="ActorService_PlacementConstraints" Value="" />
   </Parameters>
 </Application>

@@ -18,7 +18,7 @@ namespace TestRunnerApi
             ConfigureOrleansClient();
 
             // Configure Web API for self-host. 
-            var config = new HttpConfiguration();
+            var config = new HttpConfiguration { IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always };
 
             config.MapHttpAttributeRoutes();
 
@@ -35,7 +35,8 @@ namespace TestRunnerApi
             {
                 DataConnectionString = siloTable,
                 DeploymentId = Regex.Replace(serviceName.PathAndQuery.Trim('/'), "[^a-zA-Z0-9_]", "_"),
-                GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable
+                GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable,
+                ResponseTimeout = TimeSpan.FromMinutes(5)
             };
 
             GrainClient.Initialize(config);
