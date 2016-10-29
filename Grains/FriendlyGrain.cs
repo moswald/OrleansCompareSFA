@@ -6,6 +6,7 @@ namespace Grains
     using System.Threading.Tasks;
     using GrainInterfaces;
     using Orleans;
+    using Orleans.Concurrency;
 
     class FriendlyGrainState
     {
@@ -19,7 +20,7 @@ namespace Grains
 
     class FriendlyGrain : Grain<FriendlyGrainState>, IFriendlyGrain
     {
-        Task IFriendlyGrain.Initialize(IFriendlyGrain bestFriend, string firstName, string lastName, IList<IPetGrain> pets, int extraDataSize)
+        Task IFriendlyGrain.Initialize(IFriendlyGrain bestFriend, string firstName, string lastName, IList<IPetGrain> pets, Immutable<byte[]> extraData)
         {
             State = new FriendlyGrainState
             {
@@ -27,7 +28,7 @@ namespace Grains
                 LastName = lastName,
                 BestFriend = bestFriend.Cast<IFriendlyGrain>(),
                 Pets = pets.ToImmutableHashSet(),
-                ExtraData = new byte[extraDataSize],
+                ExtraData = extraData.Value,
             };
 
             return WriteStateAsync();

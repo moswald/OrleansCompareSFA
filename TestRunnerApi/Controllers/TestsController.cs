@@ -16,6 +16,7 @@
     using Microsoft.WindowsAzure.Storage.Blob;
     using Newtonsoft.Json;
     using Orleans;
+    using Orleans.Concurrency;
 
     [RoutePrefix("api/tests")]
     public class TestsController : ApiController
@@ -57,11 +58,12 @@
                     .Select(_ => Rng.Next(0, MaxPets + 1))
                     .Select(petCount => Enumerable.Range(0, petCount).Select(_ => Guid.NewGuid()).ToImmutableArray())
                     .ToImmutableArray(),
-                ExtraDataSize = extraDataSize,
+                ExtraData = new byte[extraDataSize],
                 CalculatorTestValues = Enumerable.Range(0, calculatorTestSize).Select(_ => Rng.NextDouble()).ToImmutableArray()
             };
 
             testState.ExpectedSum = testState.CalculatorTestValues.AsParallel().Sum();
+            Rng.NextBytes(testState.ExtraData);
 
             await SaveTestState(testState);
 
@@ -73,14 +75,14 @@
         public async Task<IHttpActionResult> InitializeOrleans()
         {
             var result = await Initialize(
-                async (grainId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
+                async (grainId, bestFriendId, firstName, lastName, petIds, extraData) =>
                 {
                     var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(grainId);
                     var bestFriend = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(bestFriendId);
                     var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToImmutableArray();
 
                     await Task.WhenAll(pets.Select(pet => pet.Initialize(grain, pet.GetPrimaryKey().ToString()))).ConfigureAwait(false);
-                    await grain.Initialize(bestFriend, firstName, lastName, pets, extraDataSize).ConfigureAwait(false);
+                    await grain.Initialize(bestFriend, firstName, lastName, pets, extraData.AsImmutable()).ConfigureAwait(false);
                 });
 
             return Ok(result);
@@ -91,14 +93,14 @@
         public async Task<IHttpActionResult> InitializeActors()
         {
             var result = await Initialize(
-                async (actorId, bestFriendId, firstName, lastName, petIds, extraDataSize) =>
+                async (actorId, bestFriendId, firstName, lastName, petIds, extraData) =>
                 {
                     var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(actorId));
                     var bestFriend = ActorProxy.Create<IFriendlyActor>(new ActorId(bestFriendId));
                     var pets = petIds.Select(petId => ActorProxy.Create<IPetActor>(new ActorId(petId))).ToImmutableArray();
 
                     await Task.WhenAll(pets.Select(pet => pet.Initialize(actor, pet.GetActorId().ToString()))).ConfigureAwait(false);
-                    await actor.Initialize(bestFriend, firstName, lastName, pets, extraDataSize);
+                    await actor.Initialize(bestFriend, firstName, lastName, pets, extraData);
                 });
 
             return Ok(result);
@@ -276,7 +278,7 @@
             return Ok(new { success = Math.Abs(result - testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
         }
 
-        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, int, Task> create)
+        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, byte[], Task> create)
         {
             var testState = await LoadTestState();
 
@@ -287,7 +289,7 @@
             for (var i = 0; i != testState.Count; ++i)
             {
                 var friendIndex = testState.FriendIndex(i);
-                initializationCalls[i] = create(testState.Ids[i], testState.Ids[friendIndex], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraDataSize);
+                initializationCalls[i] = create(testState.Ids[i], testState.Ids[friendIndex], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraData);
             }
 
             await Task.WhenAll(initializationCalls);
@@ -433,7 +435,7 @@
             public ImmutableArray<Guid> Ids { get; set; }
             public ImmutableArray<string> Names { get; set; }
             public ImmutableArray<ImmutableArray<Guid>> PetIds { get; set; }
-            public int ExtraDataSize { get; set; }
+            public byte[] ExtraData { get; set; }
 
             public ImmutableArray<double> CalculatorTestValues { get; set; }
             public double ExpectedSum { get; set; }

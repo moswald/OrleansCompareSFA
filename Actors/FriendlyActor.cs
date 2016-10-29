@@ -21,13 +21,13 @@
         {
         }
 
-        Task IFriendlyActor.Initialize(IFriendlyActor bestFriend, string firstName, string lastName, IList<IPetActor> pets, int extraDataSize) =>
+        Task IFriendlyActor.Initialize(IFriendlyActor bestFriend, string firstName, string lastName, IList<IPetActor> pets, byte[] extraData) =>
             Task.WhenAll(
                 StateManager.AddStateAsync(BestFriendState, bestFriend),
                 StateManager.AddStateAsync(FirstNameState, firstName),
                 StateManager.AddStateAsync(LastNameState, lastName),
                 StateManager.AddStateAsync(PetsState, pets),
-                StateManager.AddStateAsync(ExtraDataState, new byte[extraDataSize]));
+                StateManager.AddStateAsync(ExtraDataState, extraData));
 
         async Task<string> IFriendlyActor.GetFullName(string separator)
         {
