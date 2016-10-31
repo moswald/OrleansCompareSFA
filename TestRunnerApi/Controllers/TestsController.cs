@@ -1,7 +1,6 @@
 ﻿namespace TestRunnerApi.Controllers
 {
     using System;
-    using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
     using System.Fabric;
@@ -16,7 +15,7 @@
     using Microsoft.WindowsAzure.Storage.Blob;
     using Newtonsoft.Json;
     using Orleans;
-    using Orleans.Concurrency;
+    using TestModels;
 
     [RoutePrefix("api/tests")]
     public class TestsController : ApiController
@@ -28,6 +27,7 @@
 
         readonly string _testSetupBlobName;
         readonly CloudBlobContainer _blobContainer;
+        readonly TestState _testState;
 
         public TestsController()
         {
@@ -39,6 +39,13 @@
             var storageAccount = CloudStorageAccount.Parse(azureStorageConnectionString);
             var blobStorageClient = storageAccount.CreateCloudBlobClient();
             _blobContainer = blobStorageClient.GetContainerReference(blobContainerName);
+
+            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
+            if (blob.Exists())
+            {
+                var json = blob.DownloadText();
+                _testState = JsonConvert.DeserializeObject<TestState>(json);
+            }
         }
 
         [HttpGet]
@@ -74,175 +81,154 @@
         [Route("initialize/orleans")]
         public async Task<IHttpActionResult> InitializeOrleans()
         {
-            var result = await Initialize(
-                async (grainId, bestFriendId, firstName, lastName, petIds, extraData) =>
+            if (_testState == null)
                 {
-                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(grainId);
-                    var bestFriend = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(bestFriendId);
-                    var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToImmutableArray();
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-                    await Task.WhenAll(pets.Select(pet => pet.Initialize(grain, pet.GetPrimaryKey().ToString()))).ConfigureAwait(false);
-                    await grain.Initialize(bestFriend, firstName, lastName, pets, extraData.AsImmutable()).ConfigureAwait(false);
-                });
-
-            return Ok(result);
+            var test = new OrleansTests(_testState);
+            return Ok(await test.Initialize().ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("initialize/actors")]
         public async Task<IHttpActionResult> InitializeActors()
         {
-            var result = await Initialize(
-                async (actorId, bestFriendId, firstName, lastName, petIds, extraData) =>
+            if (_testState == null)
                 {
-                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(actorId));
-                    var bestFriend = ActorProxy.Create<IFriendlyActor>(new ActorId(bestFriendId));
-                    var pets = petIds.Select(petId => ActorProxy.Create<IPetActor>(new ActorId(petId))).ToImmutableArray();
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-                    await Task.WhenAll(pets.Select(pet => pet.Initialize(actor, pet.GetActorId().ToString()))).ConfigureAwait(false);
-                    await actor.Initialize(bestFriend, firstName, lastName, pets, extraData);
-                });
-
-            return Ok(result);
+            var test = new ServiceFabricActorsTests(_testState);
+            return Ok(await test.Initialize().ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/names/orleans")]
         public async Task<IHttpActionResult> QueryOrleansNames(int iterations, string separator = " ")
         {
-            var results = await QueryNames(
-                iterations,
-                separator,
-                guid =>
+            if (_testState == null)
                 {
-                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
-                    return grain.GetFullName(separator);
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 } );
+            var test = new OrleansTests(_testState);
+            return Ok(await test.QueryNames(iterations, separator).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/names/actors")]
         public async Task<IHttpActionResult> QueryActorsNames(int iterations, string separator = " ")
         {
-            var results = await QueryNames(
-                iterations,
-                separator,
-                guid =>
+            if (_testState == null)
                 {
-                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
-                    return actor.GetFullName(separator);
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 } );
+            var test = new ServiceFabricActorsTests(_testState);
+            return Ok(await test.QueryNames(iterations, separator).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/pets/orleans")]
         public async Task<IHttpActionResult> QueryOrleansPets(int iterations)
         {
-            var results = await QueryPetNames(
-                iterations,
-                guid =>
+            if (_testState == null)
                 {
-                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
-                    return grain.GetPetNames();
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var test = new OrleansTests(_testState);
+            return Ok(await test.QueryPetNames(iterations).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/pets/actors")]
         public async Task<IHttpActionResult> QueryActorsPets(int iterations)
         {
-            var results = await QueryPetNames(
-                iterations,
-                guid =>
+            if (_testState == null)
                 {
-                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
-                    return actor.GetPetNames();
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var test = new ServiceFabricActorsTests(_testState);
+            return Ok(await test.QueryPetNames(iterations).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/friends/orleans")]
         public async Task<IHttpActionResult> QueryOrleansFriends(int iterations, int depth = 3, string separator = ", ")
         {
-            var results = await QueryFriendNames(
-                iterations,
-                depth,
-                separator,
-                guid =>
+            if (_testState == null)
                 {
-                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
-                    return grain.GetFriendNames(separator, depth);
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var test = new OrleansTests(_testState);
+            return Ok(await test.QueryFriendNames(iterations, depth, separator).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("query/friends/actors")]
         public async Task<IHttpActionResult> QueryActorsFriends(int iterations, int depth = 3, string separator = ", ")
         {
-            var results = await QueryFriendNames(
-                iterations,
-                depth,
-                separator,
-                guid =>
+            if (_testState == null)
                 {
-                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
-                    return actor.GetFriendNames(separator, depth);
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var test = new ServiceFabricActorsTests(_testState);
+            return Ok(await test.QueryFriendNames(iterations, depth, separator).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("update/lastName/orleans")]
         public async Task<IHttpActionResult> UpdateOrleansLastName(int iterations)
         {
-            var results = await UpdateNames(
-                iterations,
-                async (guid, name) =>
+            if (_testState == null)
                 {
-                    var grain = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(guid);
-                    await grain.UpdateLastName(name);
-                    return await grain.GetLastName();
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var newNames = Enumerable.Range(0, iterations)
+                .Select(_ => Enumerable.Range(0, _testState.Count)
+                    .Select(__ => RandomString(NameLength)).ToImmutableArray())
+                .ToImmutableArray();
+
+            var test = new OrleansTests(_testState);
+            return Ok(await test.UpdateNames(iterations, newNames).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("update/lastName/actors")]
         public async Task<IHttpActionResult> UpdateActorsLastName(int iterations)
         {
-            var results = await UpdateNames(
-                iterations,
-                async (guid, name) =>
+            if (_testState == null)
                 {
-                    var actor = ActorProxy.Create<IFriendlyActor>(new ActorId(guid));
-                    await actor.UpdateLastName(name);
-                    return await actor.GetLastName();
-                });
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
-            return Ok(new { success = results.Item1, time = results.Item2 });
+            var newNames = Enumerable.Range(0, iterations)
+                .Select(_ => Enumerable.Range(0, _testState.Count)
+                    .Select(__ => RandomString(NameLength)).ToImmutableArray())
+                .ToImmutableArray();
+
+            var test = new ServiceFabricActorsTests(_testState);
+            return Ok(await test.UpdateNames(iterations, newNames).ConfigureAwait(false));
         }
 
         [HttpGet]
         [Route("calculator/orleans")]
         public async Task<IHttpActionResult> OrleansCalculator()
         {
-            var testState = await LoadTestState();
+            if (_testState == null)
+            {
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
             var sw = Stopwatch.StartNew();
 
-            var result = await testState.CalculatorTestValues
+            var result = await _testState.CalculatorTestValues
                 .AsParallel()
                 .Aggregate(
                     Task.FromResult(0.0),
@@ -253,18 +239,21 @@
                     });
 
             sw.Stop();
-            return Ok(new { success = Math.Abs(result - testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
+            return Ok(new { success = Math.Abs(result - _testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
         }
 
         [HttpGet]
         [Route("calculator/actors")]
         public async Task<IHttpActionResult> ActorsCalculator()
         {
-            var testState = await LoadTestState();
+            if (_testState == null)
+            {
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
+            }
 
             var sw = Stopwatch.StartNew();
 
-            var result = await testState.CalculatorTestValues
+            var result = await _testState.CalculatorTestValues
                 .AsParallel()
                 .Aggregate(
                     Task.FromResult(0.0),
@@ -275,141 +264,58 @@
                     });
 
             sw.Stop();
-            return Ok(new { success = Math.Abs(result - testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
+            return Ok(new { success = Math.Abs(result - _testState.ExpectedSum) < 1E-09, time = sw.Elapsed });
         }
 
-        async Task<TimeSpan> Initialize(Func<Guid, Guid, string, string, ImmutableArray<Guid>, byte[], Task> create)
-        {
-            var testState = await LoadTestState();
-
-            var initializationCalls = new Task[testState.Count];
-
-            var sw = Stopwatch.StartNew();
-
-            for (var i = 0; i != testState.Count; ++i)
+        [HttpGet]
+        [Route("full/orleans")]
+        public async Task<IHttpActionResult> OrleansFull(int iterations = 10)
             {
-                var friendIndex = testState.FriendIndex(i);
-                initializationCalls[i] = create(testState.Ids[i], testState.Ids[friendIndex], testState.FirstName(i), testState.LastName(i), testState.PetIds[i], testState.ExtraData);
-            }
-
-            await Task.WhenAll(initializationCalls);
-
-            sw.Stop();
-
-            return sw.Elapsed;
-        }
-
-        async Task<Tuple<bool, TimeSpan>> QueryNames(int iterations, string separator, Func<Guid, Task<string>> queryName)
-        {
-            var testState = await LoadTestState();
-
-            var queryCalls = new Task<bool>[iterations * testState.Count];
-
-            var sw = Stopwatch.StartNew();
-
-            for (var iteration = 0; iteration != iterations; ++iteration)
-            {
-                for (var index = 0; index != testState.Count; ++index)
+            if (_testState == null)
                 {
-                    queryCalls[iteration * testState.Count + index] = CompareNames(queryName(testState.Ids[index]), testState.FirstName(index) + separator + testState.LastName(index));
-                }
-            }
-
-            var results = await Task.WhenAll(queryCalls);
-            sw.Stop();
-
-            return Tuple.Create(results.All(x => x), sw.Elapsed);
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
         }
 
-        async Task<Tuple<bool, TimeSpan>> QueryPetNames(int iterations, Func<Guid, Task<IEnumerable<string>>> queryNames)
-        {
-            var testState = await LoadTestState();
-
-            var queryCalls = new Task<bool>[iterations * testState.Count];
-
-            var sw = Stopwatch.StartNew();
-
-            for (var iteration = 0; iteration != iterations; ++iteration)
-            {
-                for (var grainIndex = 0; grainIndex != testState.Count; ++grainIndex)
-                {
-                    queryCalls[iteration * testState.Count + grainIndex] = CompareNames(queryNames(testState.Ids[grainIndex]), testState.PetNames(grainIndex));
-                }
-            }
-
-            var results = await Task.WhenAll(queryCalls);
-            sw.Stop();
-
-            return Tuple.Create(results.All(x => x), sw.Elapsed);
-        }
-
-        async Task<Tuple<bool, TimeSpan>> QueryFriendNames(int iterations, int depth, string separator, Func<Guid, Task<string>> queryNames)
-        {
-            var testState = await LoadTestState();
-
-            var queryCalls = new Task<bool>[iterations * testState.Count];
-
-            var sw = Stopwatch.StartNew();
-
-            for (var iteration = 0; iteration != iterations; ++iteration)
-            {
-                for (var index = 0; index < testState.Count; index += depth + 1)
-                {
-                    var friendNames = testState.FriendNames(index, depth);
-
-                    queryCalls[iteration * testState.Count + index] =
-                        CompareNames(
-                            queryNames(testState.Ids[index]),
-                            string.Join(separator, friendNames));
-                }
-            }
-
-            var results = await Task.WhenAll(queryCalls.Where(t => t != null));
-            sw.Stop();
-
-            return Tuple.Create(results.All(x => x), sw.Elapsed);
-        }
-
-        async Task<Tuple<bool, TimeSpan>> UpdateNames(int iterations, Func<Guid, string, Task<string>> updateName)
-        {
-            var testState = await LoadTestState();
-            var newLastNames = Enumerable.Range(0, iterations)
-                .Select(_ => Enumerable.Range(0, testState.Count)
+            var newNames = Enumerable.Range(0, iterations)
+                .Select(_ => Enumerable.Range(0, _testState.Count)
                     .Select(__ => RandomString(NameLength)).ToImmutableArray())
                 .ToImmutableArray();
 
-            var results = new List<bool>(iterations * testState.Count);
+            var tests = new OrleansTests(_testState);
 
-            var sw = Stopwatch.StartNew();
+            var init = await tests.Initialize().ConfigureAwait(false);
+            var queryNames = await tests.QueryNames(iterations, " ").ConfigureAwait(false);
+            var queryPets = await tests.QueryPetNames(iterations).ConfigureAwait(false);
+            var queryFriends = await tests.QueryFriendNames(iterations, 3, " ").ConfigureAwait(false);
+            var updateNames = await tests.UpdateNames(iterations, newNames).ConfigureAwait(false);
 
-            for (var iteration = 0; iteration != iterations; ++iteration)
-            {
-                var updateCalls = new Task<bool>[testState.Count];
-
-                for (var index = 0; index < testState.Count; ++index)
-                {
-                    updateCalls[index] =
-                        CompareNames(
-                            updateName(testState.Ids[index], newLastNames[iteration][index]),
-                            newLastNames[iteration][index]);
+            return Ok(new { init, queryNames, queryPets, queryFriends, updateNames });
                 }
 
-                // have to await each iteration or else the write/read pairs could get interleaved between iterations
-                results.AddRange(await Task.WhenAll(updateCalls));
+        [HttpGet]
+        [Route("full/actors")]
+        public async Task<IHttpActionResult> ActorsFull(int iterations = 10)
+        {
+            if (_testState == null)
+            {
+                return BadRequest("Test state was not initialized. Call the /api/tests/setup endpoint first.");
             }
             
-            sw.Stop();
+            var newNames = Enumerable.Range(0, iterations)
+                .Select(_ => Enumerable.Range(0, _testState.Count)
+                    .Select(__ => RandomString(NameLength)).ToImmutableArray())
+                .ToImmutableArray();
 
-            return Tuple.Create(results.All(x => x), sw.Elapsed);
+            var tests = new ServiceFabricActorsTests(_testState);
+
+            var init = await tests.Initialize().ConfigureAwait(false);
+            var queryNames = await tests.QueryNames(iterations, " ").ConfigureAwait(false);
+            var queryPets = await tests.QueryPetNames(iterations).ConfigureAwait(false);
+            var queryFriends = await tests.QueryFriendNames(iterations, 3, " ").ConfigureAwait(false);
+            var updateNames = await tests.UpdateNames(iterations, newNames).ConfigureAwait(false);
+
+            return Ok(new { init, queryNames, queryPets, queryFriends, updateNames });
         }
-
-        static async Task<bool> CompareNames(Task<string> remoteName, string expected)
-        {
-            var remote = await remoteName;
-            return remote == expected;
-        }
-
-        static async Task<bool> CompareNames(Task<IEnumerable<string>> remotePetNames, IEnumerable<string> expectedNames) => !(await remotePetNames).Except(expectedNames).Any();
 
         async Task SaveTestState(TestState testState)
         {
@@ -419,44 +325,6 @@
             await blob.UploadTextAsync(jsonValue).ConfigureAwait(false);
         }
 
-        async Task<TestState> LoadTestState()
-        {
-            var blob = _blobContainer.GetBlockBlobReference(_testSetupBlobName);
-            var jsonValue = await blob.DownloadTextAsync().ConfigureAwait(false);
-
-            return JsonConvert.DeserializeObject<TestState>(jsonValue);
-        }
-
         static string RandomString(int length) => new string(Enumerable.Range(0, length).Select(c => (char)Rng.Next('A', 'Z' + 1)).ToArray());
-
-        class TestState
-        {
-            public int Count { get; set; }
-            public ImmutableArray<Guid> Ids { get; set; }
-            public ImmutableArray<string> Names { get; set; }
-            public ImmutableArray<ImmutableArray<Guid>> PetIds { get; set; }
-            public byte[] ExtraData { get; set; }
-
-            public ImmutableArray<double> CalculatorTestValues { get; set; }
-            public double ExpectedSum { get; set; }
-
-            public string FirstName(int index) => Names[index * 2];
-            public string LastName(int index) => Names[index * 2 + 1];
-            public IEnumerable<string> PetNames(int index) => PetIds[index].Any() ? PetIds[index].Select(g => g.ToString()).ToArray() : Array.Empty<string>();
-            public int FriendIndex(int index) => index + 1 == Count ? 0 : index + 1;
-
-            public IEnumerable<string> FriendNames(int index, int count)
-            {
-                var names = new List<string>();
-
-                for (var i = 0; i != count + 1; ++i)
-                {
-                    names.Add(FirstName(index));
-                    index = FriendIndex(index);
-                }
-
-                return names;
             }
         }
-    }
-}

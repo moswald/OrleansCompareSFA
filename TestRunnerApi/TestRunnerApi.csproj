@@ -183,9 +183,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TestModels\OrleansTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Controllers\TestsController.cs" />
     <Compile Include="OwinCommunicationListener.cs" />
+    <Compile Include="TestModels\ServiceFabricActorsTests.cs" />
+    <Compile Include="TestModels\TestResult.cs" />
+    <Compile Include="TestModels\TestState.cs" />
+    <Compile Include="TestModels\VirtualActorTests.cs" />
     <Compile Include="TestRunnerApi.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ServiceEventSource.cs" />
