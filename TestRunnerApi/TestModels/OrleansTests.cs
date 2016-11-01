@@ -6,7 +6,6 @@
     using GrainInterfaces;
     using Orleans;
     using Orleans.Concurrency;
-    using Orleans.Runtime;
 
     class OrleansTests : VirtualActorTests
     {
@@ -23,19 +22,8 @@
                     var bestFriend = GrainClient.GrainFactory.GetGrain<IFriendlyGrain>(bestFriendId);
                     var pets = petIds.Select(petId => GrainClient.GrainFactory.GetGrain<IPetGrain>(petId)).ToImmutableArray();
 
-                    try
-                    {
                         await Task.WhenAll(pets.Select(pet => pet.Initialize(grain, pet.GetPrimaryKey().ToString()))).ConfigureAwait(false);
                         await grain.Initialize(bestFriend, firstName, lastName, pets, extraData.AsImmutable()).ConfigureAwait(false);
-                    }
-                    catch (OrleansException)
-                    {
-                        // ignore exceptions for now:
-                        // when blasting out thousands of requests at once, Silos may become overloaded
-                        // if they don't respond quickly enough, a grain might get instantiated on multiple silos
-                        // the second instances will fail to save state
-                        // for our testing purposes, this is not such a big deal
-                    }
                 }).ConfigureAwait(false);
 
         public async Task<TestResult> QueryNames(int iterations, string separator) =>
